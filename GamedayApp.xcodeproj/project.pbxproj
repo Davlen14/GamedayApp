@@ -44,6 +44,10 @@
 		89070E292C5B409F00C79923 /* README.txt in Resources */ = {isa = PBXBuildFile; fileRef = 89070E122C5B409F00C79923 /* README.txt */; };
 		89070E312C5C063700C79923 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89070E302C5C063700C79923 /* GameDetailView.swift */; };
 		890DEA502C769DD600F5808B /* LeaderStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DEA4F2C769DD600F5808B /* LeaderStatsView.swift */; };
+		890DEA522C7E420100F5808B /* WinProbabilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DEA512C7E420100F5808B /* WinProbabilityView.swift */; };
+		890DEA542C7E690500F5808B /* PlayerGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DEA532C7E690500F5808B /* PlayerGame.swift */; };
+		890DEA562C7E6C2B00F5808B /* PlayerStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DEA552C7E6C2B00F5808B /* PlayerStatsView.swift */; };
+		890DEA582C8917F300F5808B /* HomeGameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DEA572C8917F300F5808B /* HomeGameDetailView.swift */; };
 		89DB3F192C619C270075B102 /* LinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F182C619C270075B102 /* LinesView.swift */; };
 		89DB3F1B2C61AFF70075B102 /* ColorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F1A2C61AFF70075B102 /* ColorExtension.swift */; };
 		89DB3F1D2C61B6CF0075B102 /* BackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F1C2C61B6CF0075B102 /* BackgroundView.swift */; };
@@ -104,6 +108,10 @@
 		89070E122C5B409F00C79923 /* README.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
 		89070E302C5C063700C79923 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
 		890DEA4F2C769DD600F5808B /* LeaderStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderStatsView.swift; sourceTree = "<group>"; };
+		890DEA512C7E420100F5808B /* WinProbabilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinProbabilityView.swift; sourceTree = "<group>"; };
+		890DEA532C7E690500F5808B /* PlayerGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerGame.swift; sourceTree = "<group>"; };
+		890DEA552C7E6C2B00F5808B /* PlayerStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStatsView.swift; sourceTree = "<group>"; };
+		890DEA572C8917F300F5808B /* HomeGameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeGameDetailView.swift; sourceTree = "<group>"; };
 		89DB3F182C619C270075B102 /* LinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinesView.swift; sourceTree = "<group>"; };
 		89DB3F1A2C61AFF70075B102 /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
 		89DB3F1C2C61B6CF0075B102 /* BackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundView.swift; sourceTree = "<group>"; };
@@ -189,6 +197,10 @@
 				89DB3F262C6485AA0075B102 /* MultiSelectDropdownView.swift */,
 				89DB3F282C6577240075B102 /* AdvancedBoxScore.swift */,
 				890DEA4F2C769DD600F5808B /* LeaderStatsView.swift */,
+				890DEA512C7E420100F5808B /* WinProbabilityView.swift */,
+				890DEA532C7E690500F5808B /* PlayerGame.swift */,
+				890DEA552C7E6C2B00F5808B /* PlayerStatsView.swift */,
+				890DEA572C8917F300F5808B /* HomeGameDetailView.swift */,
 			);
 			path = GamedayApp;
 			sourceTree = "<group>";
@@ -334,6 +346,7 @@
 				89070DF72C5B21CC00C79923 /* Team.swift in Sources */,
 				89070DF02C5B088E00C79923 /* GamesView.swift in Sources */,
 				89DB3F1B2C61AFF70075B102 /* ColorExtension.swift in Sources */,
+				890DEA582C8917F300F5808B /* HomeGameDetailView.swift in Sources */,
 				89E62B772C60B13B001412F7 /* APITest.swift in Sources */,
 				89E62B712C5F3E69001412F7 /* GameMedia.swift in Sources */,
 				89E62B632C5C5F33001412F7 /* GamedaySection.swift in Sources */,
@@ -355,13 +368,16 @@
 				89070DF22C5B08B600C79923 /* StatsView.swift in Sources */,
 				890DEA502C769DD600F5808B /* LeaderStatsView.swift in Sources */,
 				89DB3F1D2C61B6CF0075B102 /* BackgroundView.swift in Sources */,
+				890DEA542C7E690500F5808B /* PlayerGame.swift in Sources */,
 				89E62B752C60A00B001412F7 /* PlayerSeasonStat.swift in Sources */,
 				89070DDC2C5B070F00C79923 /* GamedayAppApp.swift in Sources */,
 				89070DF42C5B08D700C79923 /* MoreView.swift in Sources */,
 				89DB3F252C62018F0075B102 /* TeamRecord.swift in Sources */,
 				89E62B732C5F74B4001412F7 /* GameLine.swift in Sources */,
+				890DEA522C7E420100F5808B /* WinProbabilityView.swift in Sources */,
 				89DB3F272C6485AA0075B102 /* MultiSelectDropdownView.swift in Sources */,
 				89E62B692C5DB024001412F7 /* TeamRating.swift in Sources */,
+				890DEA562C7E6C2B00F5808B /* PlayerStatsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

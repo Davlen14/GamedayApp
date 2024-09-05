@@ -21,6 +21,7 @@ extension Color {
         return Color(UIColor(hue: hue, saturation: saturation, brightness: brightness, alpha: alpha))
     }
 }
+
 // FBS Conferences Set
 let fbsConferences: Set<String> = [
     "ACC", "Big Ten", "Big 12", "Pac-12", "SEC",
@@ -31,21 +32,21 @@ struct HomeView: View {
     @State private var games: [Game] = []
     @State private var gameMediaList: [GameMedia] = []
     @State private var errorMessage: String?
-    @State private var currentWeek: Int = 1
+    @State private var currentWeek: Int = 2
     @State private var currentYear: Int = Calendar.current.component(.year, from: Date())
     @State private var teams: [Team] = []
-    @State private var rankings: [RankingWeek] = [] // Added for rankings
+    @State private var rankings: [RankingWeek] = []
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-           NavigationView {
-               // Combine everything into one ScrollView
-                   VStack(spacing: 0) {
-
-                       // Top Bar with Gradient Background and Gameday+ Section (unchanged)
-                       ZStack {
-                           LinearGradient(gradient: Gradient(colors: [Color(red: 153/255, green: 0/255, blue: 0/255), Color(red: 255/255, green: 51/255, blue: 51/255).darker(by: 15)]), startPoint: .top, endPoint: .bottom)
-                               .edgesIgnoringSafeArea(.top)
-                               .frame(height: 114)
+        NavigationView {
+            VStack(spacing: 0) {
+                
+                // Top Bar with Gradient Background and Gameday+ Section (Light Mode)
+                ZStack {
+                    LinearGradient(gradient: Gradient(colors: [Color(red: 153/255, green: 0/255, blue: 0/255), Color(red: 255/255, green: 51/255, blue: 51/255).darker(by: 15)]), startPoint: .top, endPoint: .bottom)
+                        .edgesIgnoringSafeArea(.top)
+                        .frame(height: 114)
                     
                     HStack {
                         NavigationLink(destination: PollsView()) {
@@ -121,7 +122,7 @@ struct HomeView: View {
                     .padding(.bottom, 5)
                 }
                 
-                // Gameday+ and Login Section
+                // Gameday+ and Login Section (Light Mode)
                 VStack {
                     HStack {
                         Text("GameDay+")
@@ -163,111 +164,107 @@ struct HomeView: View {
                     .zIndex(1)
                 }
                 
-                       // Slidable Games Section - Directly under Gameday+
-                       ScrollView(.horizontal, showsIndicators: false) {
-                           HStack(spacing: 10) {
-                               ForEach(games) { game in
-                                   HomeGameCardView(game: game, teams: teams, gameMedia: gameMedia(for: game))
-                                       .frame(width: 200, height: 100)
-                                       .background(Color.white)
-                                       // Removed cornerRadius to make it blend with the rest of the layout
-                                       .shadow(color: Color.gray.opacity(0.2), radius: 5, x: 0, y: 2)
-                                       .padding(.vertical, 10)
-                               }
-                           }
-                           .padding(.horizontal, 0) // Set horizontal padding to 0 to make it edge to edge
-                       }
-                       .background(Color.white)
-                       // Removed cornerRadius to make the background blend with the rest
-                       .shadow(color: Color.gray.opacity(0.2), radius: 5, x: 0, y: 2)
-                       // Removed horizontal padding to make it edge to edge
-                       .padding(.bottom, 20)
-
+                // Slidable Games Section (Dark Mode Compatible)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(games) { game in
+                            NavigationLink(
+                                destination: HomeGameDetailView(game: game, teams: teams)
+                            ) {
+                                HomeGameCardView(game: game, teams: teams, gameMedia: gameMedia(for: game))
+                                    .frame(width: 200, height: 100)
+                                    .background(colorScheme == .dark ? Color.black : Color.white)
+                                    .shadow(color: colorScheme == .dark ? Color.black.opacity(0.8) : Color.gray.opacity(0.2), radius: 5, x: 0, y: 2)
+                                    .padding(.vertical, 10)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 0)
+                }
+                .background(colorScheme == .dark ? Color.black : Color.white)
+                .shadow(color: Color.gray.opacity(0.2), radius: 5, x: 0, y: 2)
+                .padding(.bottom, 20)
                 
-                       // Rankings Section - now integrated into the main scroll
-                       ScrollView { // Combine everything into one ScrollView
-                           VStack(spacing: 0) {
-                               HStack {
-                                   Spacer() // Add spacer to center align the content
-                                   VStack {
-                                       Image("AP") // Ensure this image is in your assets with the name "AP"
-                                           .resizable()
-                                           .scaledToFit()
-                                           .frame(width: 50, height: 50) // Increased size for visibility
-                                           .padding(.bottom, 5) // Add some padding below the image
-                                       Text("AP Top 25 Rankings")
-                                           .font(.custom("Exo2-Italic", size: 26)) // Increased font size
-                                           .foregroundColor(.gray) // Changed color to light gray
-                                           .fontWeight(.bold) // Made the text bold
-                                   }
-                                   Spacer() // Add spacer to center align the content
-                               }
-                               .padding(.top, 10)
-                               
-                               VStack(spacing: 12) { // Increase spacing between rows
-                                   ForEach(rankings.first?.polls?.first(where: { $0.poll == "AP Top 25" })?.ranks?.prefix(25) ?? [], id: \.rank) { rank in
-                                       PollRowView(rank: rank, teams: teams)
-                                           .frame(maxWidth: .infinity, alignment: .leading)
-                                   }
-                               }
-                               .padding(.horizontal)
-                           }
-                           .background(Color.white)
-                           .cornerRadius(10)
-                           .padding(.horizontal)
-                       
-
-                       
-
-                                           
-                                           // Latest News Section (unchanged)
-                                           VStack(alignment: .leading) {
-                                               Text("Latest News")
-                                                   .font(.custom("Exo2-Italic", size: 24))
-                                                   .foregroundColor(.black)
-                                                   .padding(.horizontal)
-                                                   .padding(.top, 20)
-                                                   .padding(.bottom, 10)
-                                               
-                                               ScrollView(.horizontal, showsIndicators: false) {
-                                                   HStack(spacing: 20) {
-                                                       NewsCard(imageName: "quinn", title: "SEC Media Days", link: "https://glorycolorado.com/posts/deion-sanders-speaks-out-colorado-football-team-expectations-big-12-media-days")
-                                                       NewsCard(imageName: "Ryan", title: "Ryan Day Hot Seat?", link: "https://www.on3.com/teams/texas-longhorns/news/sec-media-days-storylines-former-southwest-conference-rivals-get-to-welcome-texas-to-the-sec")
-                                                       NewsCard(imageName: "Sanders", title: "Sanders speaks out", link: "https://www.elevenwarriors.com/ohio-state-football/2024/07/147841/ohio-state-quarterback-will-howard-feeling-so-much-more-comfortable-after-six-months-with-the-buckeyes")
-                                                   }
-                                                   .padding(.horizontal)
-                                               }
-                                               .padding(.top, 10)
-                                           }
-                                           
-                                           // Top Stories Section (unchanged)
-                                           VStack(alignment: .leading) {
-                                               Text("Top Stories")
-                                                   .font(.custom("Exo2-Italic", size: 24))
-                                                   .foregroundColor(.black)
-                                                   .padding(.horizontal)
-                                                   .padding(.top, 20)
-                                                   .padding(.bottom, 10)
-                                               
-                                               VStack(spacing: 20) {
-                                                   StoryCard(imageName: "geo", number: 1, title: "Georgia Football: Recent Arrests and Updates", author: "Joe Flint and Isabella Simonetti", link: "https://www.onlineathens.com/story/sports/college/bulldogs-extra/2023/03/02/georgia-football-arrests-jalen-carter-jamon-dumas-johnson-kirby-smart-stetson-bennett-kenny-mcintosh/69961564007/")
-                                                   StoryCard(imageName: "mich", number: 2, title: "Opinion: A Two-Quarterback System Could Make Michigan Very Dangerous in 2024", author: "Sports Illustrated", link: "https://www.si.com/college/michigan/football/opinion-a-two-quarterback-system-could-make-michigan-very-dangerous-in-2024")
-                                                   StoryCard(imageName: "toledo", number: 3, title: "Briggs: Here's How Toledo and Bowling Green Could Be Promoted to the Big Leagues", author: "Kyle Mizokami", link: "https://www.toledoblade.com/sports/college/2024/05/01/briggs-here-s-how-toledo-and-bowling-green-could-be-promoted-to-the-big-leagues/stories/20240501106")
-                                               }
-                                               .padding(.horizontal)
-                                           }
+                // Rankings Section (Dark Mode Compatible)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Spacer()
+                            VStack {
+                                Image("AP")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 50, height: 50)
+                                    .padding(.bottom, 5)
+                                Text("AP Top 25 Rankings")
+                                    .font(.custom("Exo2-Italic", size: 26))
+                                    .foregroundColor(colorScheme == .dark ? Color.white.opacity(0.8) : .gray)
+                                    .fontWeight(.bold)
+                            }
+                            Spacer()
+                        }
+                        .padding(.top, 10)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(rankings.first?.polls?.first(where: { $0.poll == "AP Top 25" })?.ranks?.prefix(25) ?? [], id: \.rank) { rank in
+                                PollRowView(rank: rank, teams: teams)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .background(colorScheme == .dark ? Color.black : Color.white)
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                    
+                    // Latest News Section (Dark Mode Compatible)
+                    VStack(alignment: .leading) {
+                        Text("Latest News")
+                            .font(.custom("Exo2-Italic", size: 24))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                            .padding(.bottom, 10)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 20) {
+                                NewsCard(imageName: "quinn", title: "SEC Media Days", link: "https://glorycolorado.com/posts/deion-sanders-speaks-out-colorado-football-team-expectations-big-12-media-days")
+                                NewsCard(imageName: "Ryan", title: "Ryan Day Hot Seat?", link: "https://www.on3.com/teams/texas-longhorns/news/sec-media-days-storylines-former-southwest-conference-rivals-get-to-welcome-texas-to-the-sec")
+                                NewsCard(imageName: "Sanders", title: "Sanders speaks out", link: "https://www.elevenwarriors.com/ohio-state-football/2024/07/147841/ohio-state-quarterback-will-howard-feeling-so-much-more-comfortable-after-six-months-with-the-buckeyes")
+                            }
+                            .padding(.horizontal)
+                        }
+                        .padding(.top, 10)
+                    }
+                    
+                    // Top Stories Section (Dark Mode Compatible)
+                    VStack(alignment: .leading) {
+                        Text("Top Stories")
+                            .font(.custom("Exo2-Italic", size: 24))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                            .padding(.bottom, 10)
+                        
+                        VStack(spacing: 20) {
+                            StoryCard(imageName: "geo", number: 1, title: "Georgia Football: Recent Arrests and Updates", author: "Joe Flint and Isabella Simonetti", link: "https://www.onlineathens.com/story/sports/college/bulldogs-extra/2023/03/02/georgia-football-arrests-jalen-carter-jamon-dumas-johnson-kirby-smart-stetson-bennett-kenny-mcintosh/69961564007/")
+                            StoryCard(imageName: "mich", number: 2, title: "Opinion: A Two-Quarterback System Could Make Michigan Very Dangerous in 2024", author: "Sports Illustrated", link: "https://www.si.com/college/michigan/football/opinion-a-two-quarterback-system-could-make-michigan-very-dangerous-in-2024")
+                            StoryCard(imageName: "toledo", number: 3, title: "Briggs: Here's How Toledo and Bowling Green Could Be Promoted to the Big Leagues", author: "Kyle Mizokami", link: "https://www.toledoblade.com/sports/college/2024/05/01/briggs-here-s-how-toledo-and-bowling-green-could-be-promoted-to-the-big-leagues/stories/20240501106")
+                        }
+                        .padding(.horizontal)
+                    }
                     .padding(.top, 20)
                     
                     Spacer()
                 }
             }
-            .background(Color.gamedayWhite)
+            .background(colorScheme == .dark ? Color.black : Color.gamedayWhite)
             .edgesIgnoringSafeArea(.top)
             .onAppear {
                 Task {
                     await fetchGames()
                     await fetchTeams()
-                    await fetchRankings() // Added fetchRankings call
+                    await fetchRankings()
                     await fetchGameMedia()
                 }
             }
@@ -275,7 +272,8 @@ struct HomeView: View {
             .onChange(of: currentYear) { _, _ in Task { await fetchGames() } }
         }
     }
-    
+
+    // Fetch functions and utility methods stay the same
     private func fetchRankings() async {
         do {
             let rankings = try await TeamService.shared.fetchPolls(year: currentYear, seasonType: "regular")
@@ -308,7 +306,7 @@ struct HomeView: View {
     
     func fetchGameMedia() async {
         do {
-            let mediaList = try await TeamService.shared.fetchGameMedia()
+            let mediaList = try await TeamService.shared.fetchGameMedia(year: currentYear, week: currentWeek)
             DispatchQueue.main.async {
                 self.gameMediaList = mediaList
             }
@@ -331,8 +329,7 @@ struct HomeView: View {
             }
         }
     }
-    
-    
+
     func logo(for teamID: Int) -> String? {
         guard let team = teams.first(where: { $0.id == teamID }) else {
             return nil
@@ -352,7 +349,7 @@ struct HomeView: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    // Home Team Logo and Name
+                    // Home Team Logo and Name + Score
                     if let homeLogo = logo(for: game.homeTeamID) {
                         AsyncImage(url: URL(string: homeLogo)) { phase in
                             switch phase {
@@ -376,9 +373,17 @@ struct HomeView: View {
                         }
                     }
                     
-                    Text(game.homeTeam)
-                        .font(.custom("Exo2-Italic", size: 14))
-                        .foregroundColor(Color(.label))
+                    VStack(alignment: .leading) {
+                        Text(teamAbbreviation(for: game.homeTeamID, isHomeTeam: true))
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(Color(.label))
+                        
+                        // Home Team Points Below the Name
+                        Text("(\(game.homePoints ?? 0))")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .fontWeight(.bold)
+                            .foregroundColor(game.homePoints ?? 0 > game.awayPoints ?? 0 ? .green : .black)
+                    }
                     
                     Spacer()
                     
@@ -388,11 +393,20 @@ struct HomeView: View {
                     
                     Spacer()
                     
-                    Text(game.awayTeam)
-                        .font(.custom("Exo2-Italic", size: 14))
-                        .foregroundColor(Color(.label))
+                    // Away Team Name + Score
+                    VStack(alignment: .trailing) {
+                        Text(teamAbbreviation(for: game.awayTeamID, isHomeTeam: false))
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(Color(.label))
+                        
+                        // Away Team Points Below the Name
+                        Text("(\(game.awayPoints ?? 0))")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .fontWeight(.bold)
+                            .foregroundColor(game.awayPoints ?? 0 > game.homePoints ?? 0 ? .green : .black)
+                    }
                     
-                    // Away Team Logo and Name
+                    // Away Team Logo
                     if let awayLogo = logo(for: game.awayTeamID) {
                         AsyncImage(url: URL(string: awayLogo)) { phase in
                             switch phase {
@@ -447,6 +461,16 @@ struct HomeView: View {
                 return nil
             }
             return logo.replacingOccurrences(of: "http://", with: "https://")
+        }
+        
+        func teamAbbreviation(for teamID: Int, isHomeTeam: Bool) -> String {
+            if let team = teams.first(where: { $0.id == teamID }) {
+                if let abbreviation = team.abbreviation, !abbreviation.isEmpty {
+                    return abbreviation
+                }
+                return team.school
+            }
+            return isHomeTeam ? "Home" : "Away"
         }
     }
     

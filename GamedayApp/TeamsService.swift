@@ -35,6 +35,25 @@ class TeamService {
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
     }
+    
+    // Add the fetchScoreboard function
+        func fetchScoreboard(year: Int, week: Int) async throws -> [Game] {
+            let scoreboardPath = "/games"
+            let queryItems = [
+                URLQueryItem(name: "year", value: String(year)),
+                URLQueryItem(name: "week", value: String(week))
+            ]
+            
+            var urlComponents = URLComponents(string: linesBaseURL + scoreboardPath)
+            urlComponents?.queryItems = queryItems
+            
+            guard let finalURL = urlComponents?.url else {
+                throw URLError(.badURL)
+            }
+            
+            return try await fetchData(from: finalURL.absoluteString)
+        }
+
     func fetchAdvancedBoxScore(gameId: Int, week: Int, team: String, seasonType: String = "regular") async -> AdvancedBoxScore? {
         let boxScorePath = "/game/box/advanced"
         let queryItems = [
@@ -139,6 +158,8 @@ class TeamService {
         return try await fetchData(from: teamsURL)
     }
     
+
+
     // Fetch games using async/await with FBS filter
     func fetchGames(year: Int, seasonType: String = "regular", division: String = "fbs") async throws -> [Game] {
         let gamesPath = "/games"
@@ -159,10 +180,27 @@ class TeamService {
     }
 
     
-    // Fetch game media using async/await
-    func fetchGameMedia() async throws -> [GameMedia] {
-        let gameMediaURL = "\(baseURL)/college-football/games/media?year=2024"
-        return try await fetchData(from: gameMediaURL)
+    // Fetch game media using async/await with year and week selection and error handling
+    func fetchGameMedia(year: Int, week: Int) async throws -> [GameMedia] {
+        let gameMediaPath = "/college-football/games/media"
+        let queryItems = [
+            URLQueryItem(name: "year", value: String(year)),
+            URLQueryItem(name: "week", value: String(week)) // Add week filter
+        ]
+
+        var urlComponents = URLComponents(string: baseURL + gameMediaPath)
+        urlComponents?.queryItems = queryItems
+
+        guard let finalURL = urlComponents?.url else {
+            throw URLError(.badURL)
+        }
+
+        do {
+            return try await fetchData(from: finalURL.absoluteString)
+        } catch {
+            print("Error fetching game media: \(error)")
+            throw error
+        }
     }
     
     // Fetch team ratings and rankings using async/await
@@ -200,6 +238,52 @@ class TeamService {
         
         return try await fetchData(from: finalURL.absoluteString)
     }
+    
+    // Fetch weather for a given week and year using async/await
+    func fetchGameWeather(year: Int, week: Int) async throws -> [GameWeather] {
+        let weatherPath = "/games/weather"
+        let queryItems = [
+            URLQueryItem(name: "year", value: String(year)),
+            URLQueryItem(name: "week", value: String(week))
+        ]
+        
+        var urlComponents = URLComponents(string: linesBaseURL + weatherPath)
+        urlComponents?.queryItems = queryItems
+        
+        guard let finalURL = urlComponents?.url else {
+            throw URLError(.badURL)
+        }
+        
+        return try await fetchData(from: finalURL.absoluteString)
+  
+    }
+   
+    // Function to fetch player game stats
+    func fetchPlayerGameStats(gameId: Int, year: Int, week: Int, seasonType: String, team: String, category: String? = nil) async throws -> [PlayerGame] {
+        let playerGameStatsPath = "/games/players"
+        var queryItems = [
+            URLQueryItem(name: "gameId", value: String(gameId)),
+            URLQueryItem(name: "year", value: String(year)),
+            URLQueryItem(name: "week", value: String(week)),
+            URLQueryItem(name: "seasonType", value: seasonType),
+            URLQueryItem(name: "team", value: team)
+        ]
+        
+        // Add category if provided
+        if let category = category {
+            queryItems.append(URLQueryItem(name: "category", value: category))
+        }
+        
+        var urlComponents = URLComponents(string: linesBaseURL + playerGameStatsPath)
+        urlComponents?.queryItems = queryItems
+        
+        guard let finalURL = urlComponents?.url else {
+            throw URLError(.badURL)
+        }
+        
+        return try await fetchData(from: finalURL.absoluteString)
+    }
+
     
     // Fetch game lines using async/await
     func fetchGameLines(year: Int = 2023, seasonType: String = "regular", team: String? = nil) async throws -> [GameLine] {

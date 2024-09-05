@@ -11,7 +11,14 @@ struct Game: Identifiable, Decodable {
     let awayPoints: Int?
     let venue: String?
     let week: Int
-    
+    var weather: GameWeather? // Weather data
+    let status: String? // Status of the game
+    let period: Int? // Period (quarter in football)
+    let clock: String? // Game clock (time remaining)
+    let possession: String? // Team in possession of the ball
+    let betting: Betting? // Betting details
+
+    // CodingKeys map the JSON keys to the Swift properties
     enum CodingKeys: String, CodingKey {
         case id
         case homeTeamID = "home_id"
@@ -22,18 +29,46 @@ struct Game: Identifiable, Decodable {
         case awayPoints = "away_points"
         case venue
         case week
+        case weather // Add weather here
+        case status
+        case period
+        case clock
+        case possession
+        case betting
     }
 }
+
+// Struct to handle the betting information
+struct Betting: Decodable {
+    let spread: Double? // Point spread
+    let overUnder: Double? // Over/Under total points
+    let homeMoneyline: Int? // Moneyline for the home team
+    let awayMoneyline: Int? // Moneyline for the away team
+}
+
+// Struct to handle the weather information
+struct GameWeather: Decodable {
+    let id: Int
+    let temperature: Double?
+    let weatherCondition: String?
+    let windSpeed: Double?
+    let windDirection: Double?
+    let humidity: Int?
+    let precipitation: Double?
+}
+
+
 
 struct GamesView: View {
     @State private var games: [Game] = []
     @State private var gameMediaList: [GameMedia] = []
     @State private var gameLines: [GameLine] = []
     @State private var errorMessage: String?
-    @State private var currentWeek: Int = 1
+    @State private var currentWeek: Int = 2
     @State private var currentYear: Int = Calendar.current.component(.year, from: Date())
     @State private var currentConference: Int = 0
     @State private var teams: [Team] = []
+    @State private var apTop25Ranks: [Rank] = []
 
     private let maxWeek = 15
     private let conferences = ["All", "ACC", "American Athletic", "Big 12", "Big Ten", "Conference USA", "Mid-American", "Mountain West", "Pac-12", "SEC", "Sun Belt", "FBS Independents"]
@@ -146,9 +181,10 @@ struct GamesView: View {
                         VStack(spacing: 12) {
                             ForEach(games) { game in
                                 let gameMedia = gameMediaList.first { $0.id == game.id }
+                                let gameLine = gameLines.first { $0.id == game.id }
 
                                 NavigationLink(destination: destinationView(for: game, gameMedia: gameMedia)) {
-                                    GameCardView(game: game, teams: teams, gameMedia: gameMedia)
+                                    GameCardView(game: game, teams: teams, gameMedia: gameMedia, gameLine: gameLine, apTop25Ranks: apTop25Ranks)
                                         .background(Color(.systemGray6))
                                         .cornerRadius(10)
                                         .shadow(color: .gray.opacity(0.1), radius: 3, x: 0, y: 2)
@@ -168,8 +204,11 @@ struct GamesView: View {
                     await fetchGames()
                     await fetchTeams()
                     await fetchGameMedia()
+                    await fetchGameLines()
+                    await fetchAPTop25Rankings() // Fetch the rankings
                 }
             }
+
             .onChange(of: currentWeek) { _, _ in Task { await fetchGames() } }
             .onChange(of: currentYear) { _, _ in Task { await fetchGames() } }
         }
@@ -194,19 +233,45 @@ struct GamesView: View {
     }
 
     private func isUpcomingGame(_ game: Game, gameMedia: GameMedia?) -> Bool {
-        if let startTime = gameMedia?.startTime {
-            let currentDate = Date()
-            let gameDate = ISO8601DateFormatter().date(from: startTime) ?? currentDate
-            return gameDate > currentDate
+        guard let startTime = gameMedia?.startTime else {
+            return false
         }
-        return false
+        
+        let currentDate = Date()
+        
+        // Set up the ISO8601DateFormatter with proper time zone handling
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        if let gameDate = isoFormatter.date(from: startTime) {
+            print("Game Date: \(gameDate), Current Date: \(currentDate)")
+            return gameDate > currentDate
+        } else {
+            print("Failed to parse game start time: \(startTime)")
+            return false
+        }
     }
 
     func fetchGames() async {
         do {
-            let games = try await TeamService.shared.fetchGames(year: currentYear)
+            // Fetch games and weather data concurrently
+            async let gamesTask = TeamService.shared.fetchGames(year: currentYear)
+            async let weatherTask = TeamService.shared.fetchGameWeather(year: currentYear, week: currentWeek)
+            
+            let games = try await gamesTask
+            let weatherData = try await weatherTask
+            
+            // Merge weather data with games
+            let gamesWithWeather = games.map { game -> Game in
+                var game = game
+                if let weather = weatherData.first(where: { $0.id == game.id }) {
+                    game.weather = weather
+                }
+                return game
+            }
+            
             DispatchQueue.main.async {
-                self.games = games.filter { $0.week == self.currentWeek }
+                self.games = gamesWithWeather.filter { $0.week == self.currentWeek }
             }
         } catch {
             DispatchQueue.main.async {
@@ -215,9 +280,30 @@ struct GamesView: View {
         }
     }
 
+
+    func fetchAPTop25Rankings() async {
+        do {
+            print("Fetching AP Top 25 rankings for year: \(currentYear)")
+
+            let rankings = try await TeamService.shared.fetchPolls(year: currentYear, seasonType: "regular")
+            if let apPoll = rankings.first(where: { $0.polls?.contains(where: { $0.poll == "AP Top 25" }) == true }),
+               let ranks = apPoll.polls?.first(where: { $0.poll == "AP Top 25" })?.ranks {
+                DispatchQueue.main.async {
+                    print("Fetched AP Top 25 ranks: \(ranks.count)")
+                    self.apTop25Ranks = ranks
+                }
+            }
+        } catch {
+            DispatchQueue.main.async {
+                print("Error fetching AP Top 25: \(error.localizedDescription)")
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func fetchGameMedia() async {
         do {
-            let mediaList = try await TeamService.shared.fetchGameMedia()
+            let mediaList = try await TeamService.shared.fetchGameMedia(year: currentYear, week: currentWeek) // Pass year and week
             DispatchQueue.main.async {
                 self.gameMediaList = mediaList
             }
@@ -241,6 +327,27 @@ struct GamesView: View {
         }
     }
 
+    func fetchGameLines() async {
+        do {
+            let lines = try await TeamService.shared.fetchGameLines(year: currentYear)
+            DispatchQueue.main.async {
+                self.gameLines = lines
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    private func displayTeamNameWithRank(for teamName: String) -> String {
+        if let rank = apTop25Ranks.first(where: { $0.school == teamName })?.rank {
+            return "#\(rank) \(teamName)"
+        } else {
+            return teamName
+        }
+    }
+
     func logo(for teamID: Int) -> String? {
         guard let team = teams.first(where: { $0.id == teamID }) else {
             return nil
@@ -257,27 +364,27 @@ struct GameCardView: View {
     var teams: [Team]
     var gameMedia: GameMedia?
     var gameLine: GameLine?
+    var apTop25Ranks: [Rank]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
-                // Home Team Logo and Name
                 if let homeLogo = logo(for: game.homeTeamID) {
                     AsyncImage(url: URL(string: homeLogo)) { phase in
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .frame(width: 25, height: 25)
+                                .frame(width: 50, height: 50)
                         case .success(let image):
                             image.resizable()
                                 .scaledToFit()
-                                .frame(width: 25, height: 25)
-                                .cornerRadius(5)
+                                .frame(width: 50, height: 50)
+                                .cornerRadius(8)
                         case .failure:
                             Image(systemName: "photo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 25, height: 25)
+                                .frame(width: 50, height: 50)
                                 .foregroundColor(.gray)
                         @unknown default:
                             EmptyView()
@@ -285,46 +392,39 @@ struct GameCardView: View {
                     }
                 }
 
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text(game.homeTeam)
-                            .font(.custom("Exo2-Italic", size: 14))
-                            .foregroundColor(Color(.label))
-                        
-                        // Home Team Points
-                        Text("(\(game.homePoints ?? 0))")
-                            .font(.custom("Exo2-Italic", size: 14))
-                            .fontWeight(.bold)
-                            .foregroundColor(game.homePoints ?? 0 > game.awayPoints ?? 0 ? .green : .black)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(game.homeTeam)
+                        .font(.custom("Exo2-Italic", size: 14))
+                        .foregroundColor(Color(.label))
+                    
                     Text(gameMedia?.homeConference ?? "")
-                        .font(.custom("Exo2-Italic", size: 12))
+                        .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(.gray)
-                }
-
-                Spacer()
-
-                Text("vs")
-                    .font(.custom("Exo2-Italic", size: 14))
-                    .foregroundColor(.gray)
-
-                Spacer()
-
-                VStack(alignment: .trailing) {
-                    HStack {
-                        // Away Team Points
-                        Text("(\(game.awayPoints ?? 0))")
+                    
+                    // Display the points only if the game is completed
+                    if let homePoints = game.homePoints {
+                        Text("Score: \(homePoints)")
                             .font(.custom("Exo2-Italic", size: 14))
-                            .fontWeight(.bold)
-                            .foregroundColor(game.awayPoints ?? 0 > game.homePoints ?? 0 ? .green : .black)
-                        
-                        Text(game.awayTeam)
-                            .font(.custom("Exo2-Italic", size: 14))
-                            .foregroundColor(Color(.label))
+                            .foregroundColor(homePoints > game.awayPoints ?? 0 ? .green : .red)
                     }
+                }
+                
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(game.awayTeam)
+                        .font(.custom("Exo2-Italic", size: 14))
+                        .foregroundColor(Color(.label))
+                    
                     Text(gameMedia?.awayConference ?? "")
-                        .font(.custom("Exo2-Italic", size: 12))
+                        .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(.gray)
+                    
+                    if let awayPoints = game.awayPoints {
+                        Text("Score: \(awayPoints)")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(awayPoints > game.homePoints ?? 0 ? .green : .red)
+                    }
                 }
 
                 if let awayLogo = logo(for: game.awayTeamID) {
@@ -332,17 +432,17 @@ struct GameCardView: View {
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .frame(width: 25, height: 25)
+                                .frame(width: 50, height: 50)
                         case .success(let image):
                             image.resizable()
                                 .scaledToFit()
-                                .frame(width: 25, height: 25)
-                                .cornerRadius(5)
+                                .frame(width: 50, height: 50)
+                                .cornerRadius(8)
                         case .failure:
                             Image(systemName: "photo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 25, height: 25)
+                                .frame(width: 50, height: 50)
                                 .foregroundColor(.gray)
                         @unknown default:
                             EmptyView()
@@ -350,83 +450,94 @@ struct GameCardView: View {
                     }
                 }
             }
+            .padding(.horizontal)
+            
+            Divider()
 
-            Spacer()
+            // Weather and Network Information
+            HStack(spacing: 12) {
+                if let weather = game.weather, let gameMedia = gameMedia {
+                    VStack(alignment: .leading) {
+                        Image(weatherIcon(for: weather.weatherCondition, temperature: weather.temperature, gameTime: gameMedia.startTime))
+                            .resizable()
+                            .frame(width: 24, height: 24)
 
-            HStack {
-                VStack(alignment: .leading) {
-                    // Location and Network
-                    Text("Location: \(game.venue ?? "Unknown Location")")
-                        .font(.custom("Exo2-Italic", size: 12))
-                        .foregroundColor(.gray)
+                        Text("Temp: \(String(format: "%.1f", weather.temperature ?? 0))°")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(.gray)
+                    }
+                } else if let weather = game.weather {
+                    VStack(alignment: .leading) {
+                        Image(weatherIcon(for: weather.weatherCondition, temperature: weather.temperature, gameTime: nil))
+                            .resizable()
+                            .frame(width: 24, height: 24)
+
+                        Text("Temp: \(String(format: "%.1f", weather.temperature ?? 0))°")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(.gray)
+                    }
+                }
+            
+
+                
+                VStack(alignment: .leading, spacing: 4) {
                     if let gameMedia = gameMedia {
                         HStack {
                             Image(systemName: "tv")
                             Text("Network: \(gameMedia.outlet)")
                         }
-                        .font(.custom("Exo2-Italic", size: 12))
+                        .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(.gray)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing) {
-                    // Time
-                    if let gameMedia = gameMedia {
-                        Text(formatTime(gameMedia.startTime))
-                            .font(.custom("Exo2-Italic", size: 12))
+                        
+                        Text("Date: \(formatDate(gameMedia.startTime))")
+                            .font(.custom("Exo2-Italic", size: 14))
+                            .foregroundColor(.gray)
+                        
+                        Text("Time: \(formatTime(gameMedia.startTime))")
+                            .font(.custom("Exo2-Italic", size: 14))
                             .foregroundColor(.gray)
                     }
                 }
             }
+            .padding(.horizontal)
 
-            Spacer()
-
-            // All lines display side by side
+            Divider()
+            
+            // Lines section
             if let lines = gameLine?.lines, !lines.isEmpty {
                 HStack {
                     ForEach(lines, id: \.provider) { line in
-                        HStack(spacing: 10) {
+                        VStack {
                             Image(providerImageName(for: line.provider ?? "default"))
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 20, height: 20)
                                 .cornerRadius(4)
-
-                            Text("\(line.provider ?? "Unknown"): Spread \(String(format: "%.1f", line.spread ?? 0.0)), O/U \(String(format: "%.1f", line.overUnder ?? 0.0))")
+                            
+                            Text("\(line.provider ?? "Unknown")")
+                                .font(.system(size: 10))
+                                .foregroundColor(.black)
+                            Text("Spread: \(String(format: "%.1f", line.spread ?? 0.0))")
+                                .font(.system(size: 10))
+                                .foregroundColor(.black)
+                            Text("O/U: \(String(format: "%.1f", line.overUnder ?? 0.0))")
                                 .font(.system(size: 10))
                                 .foregroundColor(.black)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                 }
             } else {
-                // Generate default lines for each known provider
-                HStack {
-                    ForEach(defaultProviders, id: \.self) { provider in
-                        HStack(spacing: 10) {
-                            Image(providerImageName(for: provider))
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 20, height: 20)
-                                .cornerRadius(4)
-
-                            Text("\(provider): N/A")
-                                .font(.system(size: 10))
-                                .foregroundColor(.black)
-                        }
-                    }
-                }
+                Text("No betting lines available")
+                    .font(.custom("Exo2-Italic", size: 12))
+                    .foregroundColor(.gray)
+                    .padding(.top, 8)
             }
         }
         .padding()
         .background(Color(.systemGray6))
-        .cornerRadius(10)
-        .shadow(color: Color.gray.opacity(0.1), radius: 3, x: 0, y: 2)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-        )
+        .cornerRadius(12)
+        .shadow(color: Color.gray.opacity(0.2), radius: 4, x: 0, y: 2)
     }
 
     func logo(for teamID: Int) -> String? {
@@ -439,14 +550,74 @@ struct GameCardView: View {
         return logo.replacingOccurrences(of: "http://", with: "https://")
     }
 
-    private func formatTime(_ dateString: String) -> String {
+    private func weatherIcon(for condition: String?, temperature: Double?, gameTime: String?) -> String {
+        // Check if the game is at night (after 6:00 PM)
+        if let gameTime = gameTime, isNightGame(gameTime: gameTime) {
+            return "moon" // Use your moon image for night games
+        }
+
+        // If it's not night, handle based on temperature and weather conditions
+        if let temp = temperature, temp > 85 {
+            return "sun" // Use your sun image for high temperatures
+        }
+
+        switch condition?.lowercased() {
+        case "cloudy":
+            return "cloud" // Use your cloud image
+        case "light rain":
+            return "rain" // Use your rain image
+        case "heavy rain":
+            return "rain" // Use the same rain image for heavy rain
+        case "clear", "fair":
+            return "sun" // Use your sun image for clear and fair conditions
+        default:
+            return "cloud" // Default to cloud if condition is unknown
+        }
+    }
+
+
+    // Helper function to determine if the game is at night
+    private func isNightGame(gameTime: String) -> Bool {
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "h:mm a" // Adjust based on your game time format
+
+        if let date = timeFormatter.date(from: gameTime) {
+            let calendar = Calendar.current
+            let hour = calendar.component(.hour, from: date)
+            return hour >= 18 // Consider 6:00 PM or later as night time
+        }
+
+        return false
+    }
+
+
+    private func formatDate(_ dateString: String) -> String {
         let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
         guard let date = isoFormatter.date(from: dateString) else {
             return "TBD"
         }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeZone = TimeZone.current
+        
+        return displayFormatter.string(from: date)
+    }
+
+    private func formatTime(_ dateString: String) -> String {
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        guard let date = isoFormatter.date(from: dateString) else {
+            return "TBD"
+        }
+        
         let timeFormatter = DateFormatter()
         timeFormatter.timeStyle = .short
         timeFormatter.timeZone = TimeZone.current
+        
         return timeFormatter.string(from: date)
     }
 
@@ -459,23 +630,26 @@ struct GameCardView: View {
         case "ESPN Bet":
             return "espnbet"
         default:
-            return "default" // Default symbol or icon for missing logos
+            return "default"
         }
     }
 
     private var defaultProviders: [String] {
         return ["Bovada", "DraftKings", "ESPN Bet"]
     }
+    
+    private func windDirectionDescription(_ degrees: Double) -> String {
+        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let index = Int((degrees + 22.5) / 45.0) & 7
+        return directions[index]
+    }
 }
+
+
+
 
 extension Array {
     subscript(safe index: Int) -> Element? {
         return indices.contains(index) ? self[index] : nil
-    }
-}
-
-struct GamesView_Previews: PreviewProvider {
-    static var previews: some View {
-        GamesView()
     }
 }
