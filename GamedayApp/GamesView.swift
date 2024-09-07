@@ -9,6 +9,8 @@ struct Game: Identifiable, Decodable {
     let awayTeam: String
     let homePoints: Int?
     let awayPoints: Int?
+    let home_line_scores: [Int]? // Updated to be an array of Ints for quarter scores
+    let away_line_scores: [Int]? // Updated to be an array of Ints for quarter scores
     let venue: String?
     let week: Int
     var weather: GameWeather? // Weather data
@@ -27,6 +29,8 @@ struct Game: Identifiable, Decodable {
         case awayTeam = "away_team"
         case homePoints = "home_points"
         case awayPoints = "away_points"
+        case home_line_scores
+        case away_line_scores
         case venue
         case week
         case weather // Add weather here
@@ -37,6 +41,8 @@ struct Game: Identifiable, Decodable {
         case betting
     }
 }
+
+
 
 // Struct to handle the betting information
 struct Betting: Decodable {
@@ -365,6 +371,8 @@ struct GameCardView: View {
     var gameMedia: GameMedia?
     var gameLine: GameLine?
     var apTop25Ranks: [Rank]
+    @State private var playByPlayData: PlayByPlayData? = nil
+    @State private var timer: Timer?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -393,7 +401,7 @@ struct GameCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(game.homeTeam)
+                    Text(displayTeamNameWithRank(for: game.homeTeam))
                         .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(Color(.label))
                     
@@ -401,18 +409,16 @@ struct GameCardView: View {
                         .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(.gray)
                     
-                    // Display the points only if the game is completed
-                    if let homePoints = game.homePoints {
-                        Text("Score: \(homePoints)")
-                            .font(.custom("Exo2-Italic", size: 14))
-                            .foregroundColor(homePoints > game.awayPoints ?? 0 ? .green : .red)
-                    }
+                    // Display live or fallback to stored game home points
+                    Text("Score: \(liveHomeScore())")
+                        .font(.custom("Exo2-Italic", size: 14))
+                        .foregroundColor(liveHomeScore() > liveAwayScore() ? .green : .red)
                 }
                 
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(game.awayTeam)
+                    Text(displayTeamNameWithRank(for: game.awayTeam))
                         .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(Color(.label))
                     
@@ -420,11 +426,10 @@ struct GameCardView: View {
                         .font(.custom("Exo2-Italic", size: 14))
                         .foregroundColor(.gray)
                     
-                    if let awayPoints = game.awayPoints {
-                        Text("Score: \(awayPoints)")
-                            .font(.custom("Exo2-Italic", size: 14))
-                            .foregroundColor(awayPoints > game.homePoints ?? 0 ? .green : .red)
-                    }
+                    // Display live or fallback to stored game away points
+                    Text("Score: \(liveAwayScore())")
+                        .font(.custom("Exo2-Italic", size: 14))
+                        .foregroundColor(liveAwayScore() > liveHomeScore() ? .green : .red)
                 }
 
                 if let awayLogo = logo(for: game.awayTeamID) {
@@ -478,8 +483,6 @@ struct GameCardView: View {
                     }
                 }
             
-
-                
                 VStack(alignment: .leading, spacing: 4) {
                     if let gameMedia = gameMedia {
                         HStack {
@@ -538,6 +541,56 @@ struct GameCardView: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .shadow(color: Color.gray.opacity(0.2), radius: 4, x: 0, y: 2)
+        .onAppear {
+            startTimer()
+        }
+        .onDisappear {
+            stopTimer()
+        }
+    }
+
+    // Timer to fetch live play-by-play data
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 90.0, repeats: true) { _ in
+            Task {
+                await loadPlayByPlayData()
+            }
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func loadPlayByPlayData() async {
+        // Fetch the latest play-by-play data using game ID
+        do {
+            let fetchedData = try await TeamService.shared.fetchPlayByPlay(gameId: game.id)
+            DispatchQueue.main.async {
+                playByPlayData = fetchedData
+            }
+        } catch {
+            print("Error fetching play-by-play data: \(error)")
+        }
+    }
+
+    // Helper function to get live home score from PlayByPlayData or fallback to game.homePoints
+    private func liveHomeScore() -> Int {
+        if let data = playByPlayData {
+            return data.teams.first(where: { $0.homeAway == "home" })?.points ?? 0
+        } else {
+            return game.homePoints ?? 0
+        }
+    }
+
+    // Helper function to get live away score from PlayByPlayData or fallback to game.awayPoints
+    private func liveAwayScore() -> Int {
+        if let data = playByPlayData {
+            return data.teams.first(where: { $0.homeAway == "away" })?.points ?? 0
+        } else {
+            return game.awayPoints ?? 0
+        }
     }
 
     func logo(for teamID: Int) -> String? {
@@ -550,6 +603,14 @@ struct GameCardView: View {
         return logo.replacingOccurrences(of: "http://", with: "https://")
     }
 
+    private func displayTeamNameWithRank(for teamName: String) -> String {
+        if let rank = apTop25Ranks.first(where: { $0.school == teamName })?.rank {
+            return "#\(rank) \(teamName)"
+        } else {
+            return teamName
+        }
+    }
+
     private func weatherIcon(for condition: String?, temperature: Double?, gameTime: String?) -> String {
         // Check if the game is at night (after 6:00 PM)
         if let gameTime = gameTime, isNightGame(gameTime: gameTime) {
@@ -558,7 +619,7 @@ struct GameCardView: View {
 
         // If it's not night, handle based on temperature and weather conditions
         if let temp = temperature, temp > 85 {
-            return "sun" // Use your sun image for high temperatures
+            return "sun1" // Use your sun image for high temperatures
         }
 
         switch condition?.lowercased() {
@@ -569,14 +630,12 @@ struct GameCardView: View {
         case "heavy rain":
             return "rain" // Use the same rain image for heavy rain
         case "clear", "fair":
-            return "sun" // Use your sun image for clear and fair conditions
+            return "sun1" // Use your sun image for clear and fair conditions
         default:
             return "cloud" // Default to cloud if condition is unknown
         }
     }
 
-
-    // Helper function to determine if the game is at night
     private func isNightGame(gameTime: String) -> Bool {
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "h:mm a" // Adjust based on your game time format
@@ -589,7 +648,6 @@ struct GameCardView: View {
 
         return false
     }
-
 
     private func formatDate(_ dateString: String) -> String {
         let isoFormatter = ISO8601DateFormatter()
@@ -632,24 +690,5 @@ struct GameCardView: View {
         default:
             return "default"
         }
-    }
-
-    private var defaultProviders: [String] {
-        return ["Bovada", "DraftKings", "ESPN Bet"]
-    }
-    
-    private func windDirectionDescription(_ degrees: Double) -> String {
-        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-        let index = Int((degrees + 22.5) / 45.0) & 7
-        return directions[index]
-    }
-}
-
-
-
-
-extension Array {
-    subscript(safe index: Int) -> Element? {
-        return indices.contains(index) ? self[index] : nil
     }
 }

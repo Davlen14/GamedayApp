@@ -15,9 +15,9 @@ struct GameMedia: Identifiable, Decodable {
     let startTime: String
     let isStartTimeTBD: Bool
     let homeTeam: String
-    let homeConference: String
+    let homeConference: String?
     let awayTeam: String
-    let awayConference: String
+    let awayConference: String?
     let mediaType: String
     let outlet: String
 }

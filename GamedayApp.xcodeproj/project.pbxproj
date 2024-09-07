@@ -57,6 +57,8 @@
 		89DB3F252C62018F0075B102 /* TeamRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F242C62018F0075B102 /* TeamRecord.swift */; };
 		89DB3F272C6485AA0075B102 /* MultiSelectDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F262C6485AA0075B102 /* MultiSelectDropdownView.swift */; };
 		89DB3F292C6577240075B102 /* AdvancedBoxScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB3F282C6577240075B102 /* AdvancedBoxScore.swift */; };
+		89DD2E652C8BB5C60027957E /* PlayByPlayData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DD2E642C8BB5C60027957E /* PlayByPlayData.swift */; };
+		89DD2E672C8BB7E60027957E /* PlayByPlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DD2E662C8BB7E60027957E /* PlayByPlayView.swift */; };
 		89E62B632C5C5F33001412F7 /* GamedaySection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E62B622C5C5F33001412F7 /* GamedaySection.swift */; };
 		89E62B652C5C5F59001412F7 /* TopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E62B642C5C5F59001412F7 /* TopBar.swift */; };
 		89E62B692C5DB024001412F7 /* TeamRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E62B682C5DB024001412F7 /* TeamRating.swift */; };
@@ -121,6 +123,8 @@
 		89DB3F242C62018F0075B102 /* TeamRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamRecord.swift; sourceTree = "<group>"; };
 		89DB3F262C6485AA0075B102 /* MultiSelectDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiSelectDropdownView.swift; sourceTree = "<group>"; };
 		89DB3F282C6577240075B102 /* AdvancedBoxScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedBoxScore.swift; sourceTree = "<group>"; };
+		89DD2E642C8BB5C60027957E /* PlayByPlayData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayByPlayData.swift; sourceTree = "<group>"; };
+		89DD2E662C8BB7E60027957E /* PlayByPlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayByPlayView.swift; sourceTree = "<group>"; };
 		89E62B622C5C5F33001412F7 /* GamedaySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamedaySection.swift; sourceTree = "<group>"; };
 		89E62B642C5C5F59001412F7 /* TopBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBar.swift; sourceTree = "<group>"; };
 		89E62B682C5DB024001412F7 /* TeamRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamRating.swift; sourceTree = "<group>"; };
@@ -201,6 +205,8 @@
 				890DEA532C7E690500F5808B /* PlayerGame.swift */,
 				890DEA552C7E6C2B00F5808B /* PlayerStatsView.swift */,
 				890DEA572C8917F300F5808B /* HomeGameDetailView.swift */,
+				89DD2E642C8BB5C60027957E /* PlayByPlayData.swift */,
+				89DD2E662C8BB7E60027957E /* PlayByPlayView.swift */,
 			);
 			path = GamedayApp;
 			sourceTree = "<group>";
@@ -371,7 +377,9 @@
 				890DEA542C7E690500F5808B /* PlayerGame.swift in Sources */,
 				89E62B752C60A00B001412F7 /* PlayerSeasonStat.swift in Sources */,
 				89070DDC2C5B070F00C79923 /* GamedayAppApp.swift in Sources */,
+				89DD2E652C8BB5C60027957E /* PlayByPlayData.swift in Sources */,
 				89070DF42C5B08D700C79923 /* MoreView.swift in Sources */,
+				89DD2E672C8BB7E60027957E /* PlayByPlayView.swift in Sources */,
 				89DB3F252C62018F0075B102 /* TeamRecord.swift in Sources */,
 				89E62B732C5F74B4001412F7 /* GameLine.swift in Sources */,
 				890DEA522C7E420100F5808B /* WinProbabilityView.swift in Sources */,

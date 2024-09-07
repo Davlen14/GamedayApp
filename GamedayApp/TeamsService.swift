@@ -6,9 +6,10 @@ class TeamService {
     private let apiKey = "XB5Eui0++wuuyh5uZ2c+UJY4jmLKQ2jxShzJXZaM9ET21a1OgubV4/mFlCxzsBIQ"
     private let baseURL = "https://my-betting-bot-davlen-2bc8e47f62ae.herokuapp.com/api"
     private let linesBaseURL = "https://api.collegefootballdata.com"
+    private let V2BaseURL = "https://apinext.collegefootballdata.com"  // New V2 Base URL
     
     private init() {}
-    
+
     // Generic fetch function using async/await
     private func fetchData<T: Decodable>(from urlString: String) async throws -> T {
         guard let url = URL(string: urlString) else {
@@ -22,19 +23,68 @@ class TeamService {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            // Print the HTTP status code for debugging
             if let httpResponse = response as? HTTPURLResponse {
                 print("HTTP Status Code: \(httpResponse.statusCode)")
             }
             throw URLError(.badServerResponse)
         }
         
-        // Print the response data for debugging
-        print("Response Data: \(String(decoding: data, as: UTF8.self))")
-        
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
     }
+    
+    // Function to fetch live play-by-play data with retry logic
+    func fetchPlayByPlay(gameId: Int) async throws -> PlayByPlayData {
+        let playByPlayPath = "/live/plays"
+        let queryItems = [
+            URLQueryItem(name: "gameId", value: String(gameId))
+        ]
+        
+        var urlComponents = URLComponents(string: V2BaseURL + playByPlayPath)
+        urlComponents?.queryItems = queryItems
+        
+        guard let finalURL = urlComponents?.url else {
+            throw URLError(.badURL)
+        }
+        
+        var request = URLRequest(url: finalURL)
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        var retries = 3
+        while retries > 0 {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("HTTP Status Code: \(httpResponse.statusCode)")
+                    if !(200...299).contains(httpResponse.statusCode) {
+                        print("Server Error: \(String(data: data, encoding: .utf8) ?? "No error message")")
+                        throw URLError(.badServerResponse)
+                    }
+                }
+                
+                print("Response Data: \(String(data: data, encoding: .utf8) ?? "No Data")")
+                
+                let decoder = JSONDecoder()
+                return try decoder.decode(PlayByPlayData.self, from: data)
+                
+            } catch {
+                if retries == 1 {
+                    print("Error fetching play-by-play data: \(error.localizedDescription)")
+                    throw error
+                }
+                retries -= 1
+                print("Retrying... \(retries) attempts left")
+                try await Task.sleep(nanoseconds: 2 * 1_000_000_000) // Wait 2 seconds before retrying
+            }
+        }
+        
+        throw URLError(.cannotLoadFromNetwork)
+    }
+
+
+
+
     
     // Add the fetchScoreboard function
         func fetchScoreboard(year: Int, week: Int) async throws -> [Game] {
